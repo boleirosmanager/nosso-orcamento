@@ -1,0 +1,15 @@
+{
+  "name": "Nosso Orçamento",
+  "short_name": "Orçamento",
+  "description": "Controle financeiro do Fernando & Helen",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0E5C63",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

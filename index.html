@@ -1,0 +1,1789 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#475569" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Nosso Orçamento" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <title>Nosso Orçamento</title>
+  <style>
+    html, body, #root { margin: 0; padding: 0; min-height: 100%; background: #fff; }
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; font-family: 'Inter', -apple-system, sans-serif; }
+    #boot { display:flex; align-items:center; justify-content:center; min-height:100vh; color:#475569; font-family:sans-serif; }
+    @keyframes bspin { to { transform: rotate(360deg); } }
+    #boot svg { animation: bspin 1s linear infinite; }
+  </style>
+
+  <!-- React + ReactDOM (UMD globals: React, ReactDOM) -->
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <!-- Supabase (global: supabase) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+  <!-- Babel para transpilar o JSX no navegador -->
+  <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+</head>
+<body>
+  <div id="root">
+    <div id="boot">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+    </div>
+  </div>
+
+  <script type="text/babel" data-presets="react">
+
+// ============================================================
+//  >>> CONFIGURAÇÃO — preencha com os dados do seu Supabase <<<
+//  (Supabase: Project Settings > API)
+// ============================================================
+const CONFIG = {
+  SUPABASE_URL: "https://ztsvullqobuwmabdlwbx.supabase.co/rest/v1/",       // ex.: https://xxxx.supabase.co
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0c3Z1bGxxb2J1d21hYmRsd2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTQzOTAsImV4cCI6MjA5NjE3MDM5MH0.s6z_CEEiWCvj2P26ihSiYVVHKl-yS3XvqzW-m1a7R00",   // a chave "anon public"
+};
+// ============================================================
+
+const { useState, useEffect, useMemo, useCallback } = React;
+// ---- Ícones (SVG inline, sem depender de CDN externo) ----
+// Cada entrada são os elementos internos do SVG, no padrão lucide.
+const ICON_PATHS = {
+  Home: '<path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/><path d="M9 21v-6h6v6"/>',
+  GraduationCap: '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2 2 6 2s6-1 6-2v-5"/>',
+  ShoppingCart: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20"/><path d="M17 2v20"/><path d="M21 7c0-3-2-5-4-5v9c2 0 4 .5 4-1"/>',
+  Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  Shirt: '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+  HeartPulse: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
+  Car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  Sparkles: '<path d="M9.94 14.66A1 1 0 0 0 9 14a1 1 0 0 0-.94.66l-.65 1.76-1.76.65a1 1 0 0 0 0 1.88l1.76.65.65 1.76a1 1 0 0 0 1.88 0l.65-1.76 1.76-.65a1 1 0 0 0 0-1.88l-1.76-.65z"/><path d="M12 3 13.5 7.5 18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 14l.5 1.5L21 16l-1.5.5L19 18l-.5-1.5L17 16l1.5-.5z"/>',
+  PiggyBank: '<path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/>',
+  Plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  Package: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  Wallet: '<path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M3 5v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="M18 12a1 1 0 0 0 0 2h3v-2Z"/>',
+  TrendingUp: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+  TrendingDown: '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
+  Plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  X: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  Check: '<polyline points="20 6 9 17 4 12"/>',
+  ChevronLeft: '<path d="m15 18-6-6 6-6"/>',
+  ChevronRight: '<path d="m9 18 6-6-6-6"/>',
+  LayoutDashboard: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+  ListPlus: '<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/>',
+  CircleDollarSign: '<circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>',
+  AlertTriangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  ArrowUpRight: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
+  ArrowDownRight: '<path d="m7 7 10 10"/><path d="M17 7v10H7"/>',
+  Pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  Trash2: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  RefreshCw: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+  Cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+  CloudOff: '<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
+  Settings2: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
+  Search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  Calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+};
+
+function makeIcon(name) {
+  return function IconCmp(props) {
+    const { size = 24, color = "currentColor", strokeWidth = 2, style, ...rest } = props || {};
+    return React.createElement("svg", {
+      xmlns: "http://www.w3.org/2000/svg",
+      width: size, height: size, viewBox: "0 0 24 24",
+      fill: "none", stroke: color, strokeWidth: strokeWidth,
+      strokeLinecap: "round", strokeLinejoin: "round",
+      style: style, dangerouslySetInnerHTML: { __html: ICON_PATHS[name] || "" },
+      ...rest,
+    });
+  };
+}
+
+const Home = makeIcon("Home"), GraduationCap = makeIcon("GraduationCap"),
+  ShoppingCart = makeIcon("ShoppingCart"), Utensils = makeIcon("Utensils"),
+  Users = makeIcon("Users"), Shirt = makeIcon("Shirt"), HeartPulse = makeIcon("HeartPulse"),
+  Car = makeIcon("Car"), Sparkles = makeIcon("Sparkles"), PiggyBank = makeIcon("PiggyBank"),
+  Plane = makeIcon("Plane"), Package = makeIcon("Package"), Wallet = makeIcon("Wallet"),
+  TrendingUp = makeIcon("TrendingUp"), TrendingDown = makeIcon("TrendingDown"),
+  Plus = makeIcon("Plus"), X = makeIcon("X"), Check = makeIcon("Check"),
+  ChevronLeft = makeIcon("ChevronLeft"), ChevronRight = makeIcon("ChevronRight"),
+  LayoutDashboard = makeIcon("LayoutDashboard"), ListPlus = makeIcon("ListPlus"),
+  CircleDollarSign = makeIcon("CircleDollarSign"), AlertTriangle = makeIcon("AlertTriangle"),
+  ArrowUpRight = makeIcon("ArrowUpRight"), ArrowDownRight = makeIcon("ArrowDownRight"),
+  Pencil = makeIcon("Pencil"), Trash2 = makeIcon("Trash2"), RefreshCw = makeIcon("RefreshCw"),
+  Cloud = makeIcon("Cloud"), CloudOff = makeIcon("CloudOff"), Settings2 = makeIcon("Settings2"),
+  Search = makeIcon("Search"), Calendar = makeIcon("Calendar");
+
+// ---- Supabase client + data layer (cross-device sync) ----
+const _configured =
+  CONFIG.SUPABASE_URL &&
+  CONFIG.SUPABASE_ANON_KEY &&
+  !CONFIG.SUPABASE_URL.includes("COLE_AQUI") &&
+  !CONFIG.SUPABASE_ANON_KEY.includes("COLE_AQUI");
+
+const _sbLib = window.supabase || window.Supabase;
+const _sb = _configured
+  ? _sbLib.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY)
+  : null;
+const hasSupabase = !!_sb;
+const ROW_ID = "casa";
+
+async function loadRemote() {
+  if (!_sb) return null;
+  const { data, error } = await _sb.from("orcamento").select("payload").eq("id", ROW_ID).maybeSingle();
+  if (error) { console.error(error.message); return null; }
+  return data ? data.payload : null;
+}
+async function saveRemote(payload) {
+  if (!_sb) return false;
+  const { error } = await _sb.from("orcamento").upsert({ id: ROW_ID, payload, updated_at: new Date().toISOString() });
+  if (error) { console.error(error.message); return false; }
+  return true;
+}
+function subscribeRemote(onChange) {
+  if (!_sb) return () => {};
+  const ch = _sb.channel("orcamento-sync").on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "orcamento", filter: `id=eq.${ROW_ID}` },
+    (p) => { if (p.new && p.new.payload) onChange(p.new.payload); }
+  ).subscribe();
+  return () => _sb.removeChannel(ch);
+}
+
+const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const MONTHS_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const PEOPLE = ["Fernando", "Helen"];
+// Cores fixas de identidade por pessoa (usadas no app inteiro)
+const PERSON = {
+  Fernando: { color: "#0FA3A3", soft: "#E2F5F5", initial: "F" }, // teal (verde-azulado vivo)
+  Helen:    { color: "#7C5CBF", soft: "#EFEAFA", initial: "H" }, // roxo / ametista
+};
+const personColor = (p) => (PERSON[p] ? PERSON[p].color : "#5E7173");
+const personSoft  = (p) => (PERSON[p] ? PERSON[p].soft : "#EEF2F2");
+
+const CAT_ICON = {
+  "Moradia": Home, "Educação": GraduationCap, "Mercado": ShoppingCart,
+  "Alimentação": Utensils, "Empregada doméstica": Users, "Vestuário": Shirt,
+  "Saúde": HeartPulse, "Transporte": Car, "Cuidados pessoais": Sparkles,
+  "Previdência e Investimentos": PiggyBank, "Viagens": Plane, "Outros": Package,
+};
+
+const fmt = (n) =>
+  (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+// Padronizado: valor cheio em todo o app (sem abreviação "k").
+const fmtShort = (n) => fmt(n);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ===== Dados importados da planilha 2026 (totais conferidos) ===== */
+const SEED = {"despesas": [{"category": "Moradia", "budget": 7500, "items": [{"name": "Condominio", "monthly": [2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65, 2144.65], "person": "Fernando", "variable": false}, {"name": "IPTU", "monthly": [1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 1073.44, 0], "person": "Fernando", "variable": false}, {"name": "Luz", "monthly": [402.26, 250.16, 269.07, 253.14, 276.1, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0], "person": "Fernando", "variable": false}, {"name": "Gás", "monthly": [444.22, 380.0, 333.16, 409.0, 345.0, 380.0, 380.0, 380.0, 380.0, 380.0, 380.0, 380.0], "person": "Fernando", "variable": false}, {"name": "Água", "monthly": [502.65, 278.15, 338.12, 509.52, 370.18, 450.0, 450.0, 450.0, 450.0, 450.0, 450.0, 450.0], "person": "Fernando", "variable": false}, {"name": "Vivo Fibra 300MB", "monthly": [117.34, 117.34, 117.34, 117.34, 111.99, 117.34, 117.34, 117.34, 117.34, 117.34, 117.34, 117.34], "person": "Fernando", "variable": false}, {"name": "Spotify", "monthly": [0, 0, 0, 0, 0, 23.9, 23.9, 23.9, 23.9, 23.9, 23.9, 23.9], "person": "Fernando", "variable": false}, {"name": "iFood", "monthly": [12.9, 12.9, 12.9, 12.9, 0, 0, 12.9, 12.9, 12.9, 12.9, 12.9, 12.9], "person": "Fernando", "variable": false}, {"name": "Mercado Livre + Disney premium", "monthly": [66.9, 66.9, 66.9, 66.9, 59.9, 59.9, 59.9, 59.9, 59.9, 59.9, 59.9, 59.9], "person": "Fernando", "variable": false}, {"name": "Financiamento Apto (dia30)", "monthly": [1775.0, 1775.0, 775.0, 775.0, 775.0, 775.0, 775.0, 775.0, 775.0, 775.0, 275.0, 275.0], "person": "Fernando", "variable": false}, {"name": "Variável", "monthly": [250, 0, 0, 0, 1698.75, 0, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Claro", "monthly": [391.96, 388.66, 390.0, 391.95, 412.2, 412.2, 412.2, 412.2, 412.2, 412.2, 412.2, 412.2], "person": "Helen", "variable": false}, {"name": "iCloud", "monthly": [20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0], "person": "Helen", "variable": false}, {"name": "Financiamento Apto", "monthly": [0.0, 0.0, 955.0, 955.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0], "person": "Helen", "variable": false}, {"name": "Variável", "monthly": [820.82, 688.8, 800.72, 505.3, 505.3, 707.93, 707.93, 707.93, 250, 250, 250, 250], "person": "Helen", "variable": true}]}, {"category": "Educação", "budget": 14500, "items": [{"name": "Integral Carandá Clarice", "monthly": [1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0, 1879.0], "person": "Fernando", "variable": false}, {"name": "Mensalidade Carandá Vini", "monthly": [4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0, 4312.0], "person": "Fernando", "variable": false}, {"name": "Capoeira Vini", "monthly": [0, 0, 0, 528.0, 264.0, 264.0, 264.0, 264.0, 264.0, 264.0, 264.0, 264.0], "person": "Fernando", "variable": false}, {"name": "Mensalidade Carandá Clarice", "monthly": [3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0, 3800.0], "person": "Fernando", "variable": false}, {"name": "Variável", "monthly": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Personal", "monthly": [0.0, 1665.0, 1480.0, 1480.0, 1480.0, 1480.0, 1480.0, 1480.0, 1480.0, 1480.0, 1480.0, 1480.0], "person": "Helen", "variable": false}, {"name": "Variável", "monthly": [726.5, 1537.63, 2151.65, 3761.28, 1520.39, 35206.15, 1998.15, 1586.15, 3218.39, 2678.39, 2678.39, 3462], "person": "Helen", "variable": true}]}, {"category": "Mercado", "budget": 5300, "items": [{"name": "Variável", "monthly": [587.01, 241.39, 168.99, 176.1, 90, 0, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [4211.54, 5202.28, 6101.34, 5644.45, 5548.87, 4778.98, 692.69, 0, 0, 0, 0, 0], "person": "Helen", "variable": true}]}, {"category": "Alimentação", "budget": 3500, "items": [{"name": "Variável", "monthly": [2949.25, 979.08, 901.1, 1225.4, 1575.81, 1456.78, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [1067.23, 894.64, 1022.23, 1151.15, 1353.84, 1307.82, 441.36, 0, 0, 0, 0, 0], "person": "Helen", "variable": true}]}, {"category": "Empregada doméstica", "budget": 2300, "items": [{"name": "Salário", "monthly": [1315.0, 1815.0, 1815.0, 1815.0, 1950.0, 1950.0, 1950.0, 1950.0, 1950.0, 1950.0, 1950.0, 1950.0], "person": "Helen", "variable": false}, {"name": "Transporte", "monthly": [145.0, 145.0, 145.0, 145.0, 145.0, 145.0, 145.0, 145.0, 145.0, 145.0, 145.0, 145.0], "person": "Helen", "variable": false}, {"name": "Adiantamento", "monthly": [500.0, 0.0, 0.0, 0.0, 0.0, 0.0, 325.0, 0.0, 0.0, 0.0, 325.0, 0.0], "person": "Helen", "variable": false}, {"name": "Abono, ferias", "monthly": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 975.0, 975.0], "person": "Helen", "variable": false}]}, {"category": "Vestuário", "budget": 2900, "items": [{"name": "Variável", "monthly": [160.8, 309.87, 309.87, 209.97, 0, 425.79, 425.79, 425.79, 425.79, 245.79, 245.79, 245.79], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [3525.91, 3836.82, 2564.54, 1561.62, 1015.94, 1507.15, 1085.26, 1085.26, 789.44, 329.3, 329.3, 217.68], "person": "Helen", "variable": true}]}, {"category": "Saúde", "budget": 6100, "items": [{"name": "Variável", "monthly": [667.32, 517.88, 518.65, 389.8, 400, 300, 300, 300, 300, 300, 300, 300], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [4844.74, 2472.01, 4537.62, 4072.93, 5685.15, 3640.55, 355.35, 253.51, 0, 0, 0, 0], "person": "Helen", "variable": true}]}, {"category": "Transporte", "budget": 900, "items": [{"name": "Variável", "monthly": [639.48, 680.65, 613.43, 547.57, 687.24, 360, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [191.86, 149.39, 458.91, 395.89, 164.47, 111.57, 0, 0, 0, 0, 0, 0], "person": "Helen", "variable": true}]}, {"category": "Cuidados pessoais", "budget": 1500, "items": [{"name": "Variável", "monthly": [529.78, 33.33, 408.23, 33.33, 0, 0, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [1437.49, 1281.99, 1335.04, 586.83, 383.8, 1309.5, 1052.55, 598.15, 454.82, 454.82, 454.82, 454.82], "person": "Helen", "variable": true}]}, {"category": "Previdência e Investimentos", "budget": 13000, "items": [{"name": "Itaú complementar", "monthly": [1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 1140.5, 2281.0], "person": "Helen", "variable": false}, {"name": "Itaú básico", "monthly": [1312.65, 1312.65, 1312.65, 543.55, 543.55, 1312.65, 1312.65, 1312.65, 1312.65, 1312.65, 1312.65, 2625.3], "person": "Helen", "variable": false}, {"name": "Seguro de vida", "monthly": [0.0, 0.0, 0.0, 0.0, 0.0, 694.07, 694.07, 694.07, 694.07, 694.07, 694.07, 694.07], "person": "Helen", "variable": false}, {"name": "Tesouro direto", "monthly": [0.0, 0.0, 0.0, 3000.0, 3500.0, 0.0, 4000.0, 4000.0, 4000.0, 4000.0, 4000.0, 4000.0], "person": "Helen", "variable": false}]}, {"category": "Viagens", "budget": 6500, "items": [{"name": "Variável", "monthly": [10182.48, 2212.58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [6368.18, 10830.13, 4914.97, 3448.73, 3969.09, 16713.93, 3213.93, 2051.9, 2051.9, 896.86, 800.86, 800.86], "person": "Helen", "variable": true}]}, {"category": "Outros", "budget": 5000, "items": [{"name": "Variável", "monthly": [5478.56, 951.64, 523.84, 290.5, 1954.3, 919.96, 228.49, 228.49, 228.49, 228.49, 228.49, 228.49], "person": "Fernando", "variable": true}, {"name": "Variável", "monthly": [12084.48, 1642.4, 1715.19, 1905.59, 2093.46, 1687.73, 1114.09, 1025.77, 922.45, 833.08, 833.08, 833.08], "person": "Helen", "variable": true}]}], "renda": {"Fernando": [{"name": "Sobra cc 2025", "monthly": [21182.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Pagamento adiantamento", "monthly": [9998.76, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21, 11241.21]}, {"name": "Pagamento complemento", "monthly": [4850.0, 6090.0, 5970.0, 6110.0, 6211.33, 6211.33, 6211.33, 6211.33, 6211.33, 6211.33, 6211.33, 6211.33]}, {"name": "Parcelas 13º salário", "monthly": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 1.0]}, {"name": "Férias", "monthly": [4905.03, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0]}, {"name": "Bônus", "monthly": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0]}, {"name": "Ações CSL", "monthly": [0, 0, 4925.64, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Resgate aplicações", "monthly": [0, 0, 0, 0, 5718.98, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Restituição IR", "monthly": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1400.0, 0, 0]}], "Helen": [{"name": "Salário", "monthly": [149.66, 29500.0, 29500.0, 20000.0, 20000.0, 29500.0, 29500.0, 29500.0, 29500.0, 29500.0, 29500.0, 29500.0]}, {"name": "Renda extra 1", "monthly": [30000.0, 1043.1, 1760.0, 9000.0, 2800.0, 9500.0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 2", "monthly": [1230.0, 800.0, 250.0, 250.0, 243.1, 250.0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 3", "monthly": [6000.0, 1200.0, 1000.0, 1760.0, 9500.0, 33200.0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 4", "monthly": [1600.0, 1000.0, 710.0, 1.58, 2200.0, 250.0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 5", "monthly": [600.0, 290.8, 0, 4.68, 1060.0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 6", "monthly": [2088.0, 0, 0, 200.0, 3.33, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 7", "monthly": [250.0, 0, 0, 300.0, 12.63, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 8", "monthly": [0, 0, 0, 833.35, 100.0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Renda extra 9", "monthly": [0, 0, 0, 333.9, 0, 0, 0, 0, 0, 0, 0, 0]}]}, "saldoInicial": 0};
+
+/* ============================ DATA MODEL ============================
+ Entry shape (normalized, what the app actually edits):
+   { id, kind:'expense'|'income', category, person, name, monthly:[12 numbers] }
+ Budgets: { [category]: number }  (monthly budget per category)
+ Meta: { saldoInicial: number }
+==================================================================== */
+
+function seedToState(SEED) {
+  const entries = [];
+  SEED.despesas.forEach((cat) => {
+    cat.items.forEach((it) => {
+      entries.push({
+        id: uid(),
+        kind: "expense",
+        category: cat.category,
+        person: it.person,
+        name: it.name,
+        monthly: it.monthly.slice(0, 12),
+      });
+    });
+  });
+  Object.keys(SEED.renda).forEach((person) => {
+    SEED.renda[person].forEach((it) => {
+      entries.push({
+        id: uid(),
+        kind: "income",
+        category: "Renda",
+        person,
+        name: it.name,
+        monthly: it.monthly.slice(0, 12),
+      });
+    });
+  });
+  const budgets = {};
+  SEED.despesas.forEach((c) => (budgets[c.category] = c.budget));
+  return { entries, budgets, saldoInicial: SEED.saldoInicial || 0 };
+}
+
+const CATEGORIES = [
+  "Moradia","Educação","Mercado","Alimentação","Empregada doméstica","Vestuário",
+  "Saúde","Transporte","Cuidados pessoais","Previdência e Investimentos","Viagens","Outros",
+];
+
+/* ----------- camada de dados: Supabase (sincroniza 2 celulares) ----------- */
+async function loadState() {
+  if (!hasSupabase) return null;
+  return await loadRemote();
+}
+async function saveState(state) {
+  if (!hasSupabase) return false;
+  return await saveRemote(state);
+}
+
+/* ----------------------- computation helpers ----------------------- */
+function useComputed(entries, budgets, saldoInicial, personView = "Casal") {
+  return useMemo(() => {
+    const inView = (e) => personView === "Casal" || e.person === personView;
+    const byMonth = MONTHS.map((_, m) => {
+      let income = 0, expense = 0;
+      const catExpense = {};
+      const personIncome = { Fernando: 0, Helen: 0 };
+      const personExpense = { Fernando: 0, Helen: 0 };
+      CATEGORIES.forEach((c) => (catExpense[c] = 0));
+      entries.forEach((e) => {
+        if (!inView(e)) return;
+        const v = e.monthly[m] || 0;
+        if (e.kind === "income") {
+          income += v;
+          if (personIncome[e.person] != null) personIncome[e.person] += v;
+        } else {
+          expense += v;
+          catExpense[e.category] = (catExpense[e.category] || 0) + v;
+          if (personExpense[e.person] != null) personExpense[e.person] += v;
+        }
+      });
+      return { income, expense, net: income - expense, catExpense, personIncome, personExpense };
+    });
+    // running balance (parte do saldo inicial só na visão do Casal)
+    let run = personView === "Casal" ? saldoInicial : 0;
+    const balance = byMonth.map((mo) => (run += mo.net));
+
+    // Saldo ACUMULADO por pessoa: entradas + sobra dos meses anteriores − gastos.
+    // Carrega mês a mês. (Saldo inicial conta apenas na visão do Casal; por pessoa
+    // partimos de 0, pois a planilha não separa saldo inicial por pessoa.)
+    const runPerson = { Fernando: 0, Helen: 0 };
+    const personBalance = byMonth.map((mo) => {
+      runPerson.Fernando += mo.personIncome.Fernando - mo.personExpense.Fernando;
+      runPerson.Helen += mo.personIncome.Helen - mo.personExpense.Helen;
+      return { Fernando: runPerson.Fernando, Helen: runPerson.Helen };
+    });
+
+    const year = byMonth.reduce(
+      (a, mo) => ({ income: a.income + mo.income, expense: a.expense + mo.expense }),
+      { income: 0, expense: 0 }
+    );
+    // Orçamento: na visão individual não há meta por pessoa, então usamos o total
+    // só na visão do Casal; nas individuais o "orçado" fica oculto.
+    const budgetYear = CATEGORIES.reduce((a, c) => a + (budgets[c] || 0) * 12, 0);
+    return { byMonth, balance, personBalance, year, budgetYear, personView };
+  }, [entries, budgets, saldoInicial, personView]);
+}
+
+/* ============================ DESIGN ============================ */
+const C = {
+  // Base neutra do app (cinza ardósia). Mantemos a chave "petrol" para
+  // não quebrar referências — agora aponta para o cinza de marca.
+  petrol: "#475569",      // cinza ardósia (cor de interface)
+  petrolDark: "#334155",
+  petrolSoft: "#EEF1F5",
+  orange: "#E8732A",      // laranja (botão +)
+  orangeSoft: "#FDEEE3",
+  green: "#1E9E6A",       // saudável
+  greenSoft: "#E4F5EE",
+  red: "#D9483B",         // atenção
+  redSoft: "#FBE9E7",
+  couple: "#C98A1E",      // âmbar/dourado — identidade do Casal
+  coupleSoft: "#FBF1DD",
+  ink: "#1E2A33",
+  sub: "#64748B",
+  line: "#E6EAEF",
+  bg: "#FFFFFF",
+  panel: "#FAFBFC",
+};
+
+const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');`;
+
+function Ring({ pct, size = 56, stroke = 7, color }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(1, pct));
+  return (
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.line} strokeWidth={stroke} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color}
+        strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={c * (1 - clamped)}
+        style={{ transition: "stroke-dashoffset .6s cubic-bezier(.4,0,.2,1)" }}
+      />
+    </svg>
+  );
+}
+
+function Pill({ children, tone = "neutral" }) {
+  const map = {
+    good: { bg: C.greenSoft, fg: C.green },
+    bad: { bg: C.redSoft, fg: C.red },
+    warn: { bg: C.orangeSoft, fg: C.orange },
+    neutral: { bg: C.petrolSoft, fg: C.petrol },
+  }[tone];
+  return (
+    <span style={{
+      background: map.bg, color: map.fg, fontSize: 11, fontWeight: 600,
+      padding: "3px 9px", borderRadius: 999, display: "inline-flex",
+      alignItems: "center", gap: 4, whiteSpace: "nowrap",
+    }}>{children}</span>
+  );
+}
+
+// Etiqueta de pessoa com a cor fixa de identidade
+function PersonBadge({ person, size = "sm" }) {
+  const col = personColor(person);
+  const soft = personSoft(person);
+  const small = size === "sm";
+  return (
+    <span style={{
+      background: soft, color: col, fontWeight: 700,
+      fontSize: small ? 10.5 : 12, padding: small ? "2px 8px 2px 5px" : "3px 10px 3px 6px",
+      borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
+    }}>
+      <span style={{
+        width: small ? 14 : 18, height: small ? 14 : 18, borderRadius: 999, background: col,
+        color: "#fff", fontSize: small ? 9 : 11, fontWeight: 800,
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+      }}>{PERSON[person] ? PERSON[person].initial : "?"}</span>
+      {person}
+    </span>
+  );
+}
+
+function Card({ children, style, accent }) {
+  return (
+    <div style={{
+      background: C.bg, border: `1px solid ${C.line}`, borderRadius: 16,
+      padding: 16, position: "relative", overflow: "hidden",
+      boxShadow: "0 1px 2px rgba(10,40,42,.04)", ...style,
+    }}>
+      {accent && (
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: accent }} />
+      )}
+      {children}
+    </div>
+  );
+}
+
+function MiniBars({ data, color, height = 40 }) {
+  const max = Math.max(...data.map((d) => Math.abs(d)), 1);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height }}>
+      {data.map((d, i) => (
+        <div key={i} style={{
+          flex: 1, height: `${Math.max(4, (Math.abs(d) / max) * height)}px`,
+          background: d < 0 ? C.red : color, borderRadius: 3, opacity: 0.85,
+          transition: "height .4s ease",
+        }} title={`${MONTHS[i]}: ${fmt(d)}`} />
+      ))}
+    </div>
+  );
+}
+
+// Gráfico de linha multi-série (SVG puro). series: [{name, color, data:[12]}]
+function LineChart({ series, highlight, height = 170 }) {
+  const W = 320, H = height, padL = 8, padR = 8, padT = 12, padB = 22;
+  const n = 12;
+  const allVals = series.flatMap((s) => s.data);
+  let min = Math.min(0, ...allVals);
+  let max = Math.max(0, ...allVals);
+  if (min === max) max = min + 1;
+  const pad = (max - min) * 0.08;
+  min -= pad; max += pad;
+  const x = (i) => padL + (i * (W - padL - padR)) / (n - 1);
+  const y = (v) => padT + (H - padT - padB) * (1 - (v - min) / (max - min));
+  const zeroY = y(0);
+
+  const pathFor = (data) =>
+    data.map((v, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      {/* linha do zero */}
+      {min < 0 && max > 0 && (
+        <line x1={padL} y1={zeroY} x2={W - padR} y2={zeroY} stroke={C.line} strokeWidth="1" strokeDasharray="3 3" />
+      )}
+      {/* destaque do mês selecionado */}
+      {highlight != null && (
+        <line x1={x(highlight)} y1={padT} x2={x(highlight)} y2={H - padB} stroke={C.line} strokeWidth="1.5" />
+      )}
+      {/* séries */}
+      {series.map((s) => (
+        <path key={s.name} d={pathFor(s.data)} fill="none" stroke={s.color}
+          strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+      ))}
+      {/* pontos do mês destacado */}
+      {highlight != null && series.map((s) => (
+        <circle key={s.name} cx={x(highlight)} cy={y(s.data[highlight])} r="3.6"
+          fill="#fff" stroke={s.color} strokeWidth="2.4" />
+      ))}
+      {/* rótulos dos meses */}
+      {MONTHS.map((m, i) => (
+        <text key={i} x={x(i)} y={H - 6} textAnchor="middle"
+          fontSize="9" fontWeight={i === highlight ? 700 : 500}
+          fill={i === highlight ? C.ink : C.sub}>{m[0]}</text>
+      ))}
+    </svg>
+  );
+}
+
+/* ============================ DASHBOARD ============================ */
+function Dashboard({ comp, month, budgets, personView = "Casal" }) {
+  const isCouple = personView === "Casal";
+  const viewColor = isCouple ? C.couple : personColor(personView);
+  const mo = comp.byMonth[month];
+  const bal = comp.balance[month];
+  const healthy = mo.net >= 0;
+
+  const catRows = CATEGORIES.map((c) => {
+    const spent = mo.catExpense[c] || 0;
+    const budget = budgets[c] || 0;
+    const pct = budget > 0 ? spent / budget : 0;
+    return { c, spent, budget, pct, over: budget > 0 && spent > budget };
+  }).sort((a, b) => b.spent - a.spent);
+
+  // Sobra que veio do mês anterior (saldo acumulado até o mês anterior)
+  const prevBalance = month > 0 ? comp.balance[month - 1] : (isCouple ? 0 : 0);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Banner de contexto de pessoa */}
+      {!isCouple && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 9, padding: "10px 14px",
+          background: personSoft(personView), borderRadius: 12,
+          border: `1px solid ${viewColor}22`,
+        }}>
+          <span style={{
+            width: 26, height: 26, borderRadius: 999, background: viewColor, color: "#fff",
+            fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center",
+          }}>{PERSON[personView].initial}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: viewColor }}>
+            Vendo apenas os lançamentos de {personView}
+          </span>
+        </div>
+      )}
+
+      {/* Hero balance */}
+      <Card accent={healthy ? C.green : C.red} style={{ padding: 18 }}>
+        <div style={{ fontSize: 12, color: C.sub, fontWeight: 600, letterSpacing: .3 }}>
+          {isCouple ? "SALDO ACUMULADO" : `SALDO DE ${personView.toUpperCase()}`} · {MONTHS_FULL[month]}
+        </div>
+        <div style={{ fontSize: 30, fontWeight: 700, fontFamily: "Sora", color: bal < 0 ? C.red : C.ink, marginTop: 4 }}>
+          {fmt(bal)}
+        </div>
+
+        {/* Relação entrada x saída */}
+        {(() => {
+          const tot = mo.income + mo.expense;
+          const incPct = tot > 0 ? (mo.income / tot) * 100 : 50;
+          const spentPct = mo.income > 0 ? Math.round((mo.expense / mo.income) * 100) : 0;
+          return (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                <span style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>
+                  Gastou {spentPct}% do que entrou
+                </span>
+                <Pill tone={mo.expense <= mo.income ? "good" : "bad"}>
+                  {mo.expense <= mo.income ? "no azul" : "no vermelho"}
+                </Pill>
+              </div>
+              <div style={{ display: "flex", height: 8, borderRadius: 99, overflow: "hidden", background: C.line }}>
+                <div style={{ width: `${incPct}%`, background: C.green }} title="Entradas" />
+                <div style={{ width: `${100 - incPct}%`, background: C.red }} title="Saídas" />
+              </div>
+            </div>
+          );
+        })()}
+
+        <div style={{ display: "flex", alignItems: "stretch", gap: 4, marginTop: 16 }}>
+          <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: C.sub, fontWeight: 600, marginBottom: 2 }}>Mês anterior</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: prevBalance >= 0 ? C.green : C.red, whiteSpace: "nowrap" }}>
+              {prevBalance >= 0 ? "+" : ""}{fmt(prevBalance)}
+            </div>
+          </div>
+          <div style={{ width: 1, background: C.line }} />
+          <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: C.sub, fontWeight: 600, marginBottom: 2 }}>Entrada</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.green, whiteSpace: "nowrap" }}>{fmt(mo.income)}</div>
+          </div>
+          <div style={{ width: 1, background: C.line }} />
+          <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: C.sub, fontWeight: 600, marginBottom: 2 }}>Saída</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.red, whiteSpace: "nowrap" }}>{fmt(mo.expense)}</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Resumo do ano — gráfico de linha (Renda, Despesas, Saldo acumulado) */}
+      <Card>
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink }}>
+            Resumo do ano
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+            {comp.year.income - comp.year.expense >= 0
+              ? <TrendingUp size={14} color={C.green} />
+              : <TrendingDown size={14} color={C.red} />}
+            <span style={{ fontSize: 12, color: C.sub, fontWeight: 600 }}>Saldo do ano:</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: comp.year.income - comp.year.expense >= 0 ? C.green : C.red }}>
+              {comp.year.income - comp.year.expense >= 0 ? "+" : ""}{fmt(comp.year.income - comp.year.expense)}
+            </span>
+          </div>
+        </div>
+
+        {/* Legenda */}
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 4 }}>
+          {[
+            { name: "Renda", color: C.green },
+            { name: "Despesas", color: C.red },
+            { name: "Saldo acum.", color: viewColor },
+          ].map((s) => (
+            <span key={s.name} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: C.sub, fontWeight: 600 }}>
+              <span style={{ width: 14, height: 3, borderRadius: 2, background: s.color }} />
+              {s.name}
+            </span>
+          ))}
+        </div>
+
+        <LineChart
+          highlight={month}
+          series={[
+            { name: "Renda", color: C.green, data: comp.byMonth.map((m) => m.income) },
+            { name: "Despesas", color: C.red, data: comp.byMonth.map((m) => m.expense) },
+            { name: "Saldo", color: viewColor, data: comp.balance },
+          ]}
+        />
+
+        {/* Valores do mês destacado */}
+        <div style={{ marginTop: 8, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>Vem do mês anterior</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: prevBalance >= 0 ? C.green : C.red }}>
+              {prevBalance >= 0 ? "+" : ""}{fmt(prevBalance)}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "stretch", gap: 4 }}>
+            <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 600, marginBottom: 2 }}>Renda</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.green, whiteSpace: "nowrap" }}>{fmt(mo.income)}</div>
+            </div>
+            <div style={{ width: 1, background: C.line }} />
+            <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 600, marginBottom: 2 }}>Despesas</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.red, whiteSpace: "nowrap" }}>{fmt(mo.expense)}</div>
+            </div>
+            <div style={{ width: 1, background: C.line }} />
+            <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 600, marginBottom: 2 }}>Saldo acum.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: bal >= 0 ? C.green : C.red, whiteSpace: "nowrap" }}>{fmt(bal)}</div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Person split — só no modo Casal */}
+      {isCouple && (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {PEOPLE.map((p) => {
+          const inc = mo.personIncome[p], exp = mo.personExpense[p];
+          const saldo = comp.personBalance[month][p]; // acumulado (já inclui meses anteriores)
+          const prev = month > 0 ? comp.personBalance[month - 1][p] : 0; // sobra do mês anterior
+          const pc = personColor(p);
+          const cell = (label, value, color) => (
+            <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 600, marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color, whiteSpace: "nowrap" }}>{fmtShort(value)}</div>
+            </div>
+          );
+          return (
+            <Card key={p} style={{ padding: 14 }} accent={pc}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: 999, background: pc, color: "#fff",
+                  fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>{PERSON[p].initial}</span>
+                <span style={{ fontWeight: 600, fontSize: 13, fontFamily: "Sora", color: pc }}>{p}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>Vem do mês anterior</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: prev >= 0 ? C.green : C.red, whiteSpace: "nowrap" }}>
+                  {prev >= 0 ? "+" : ""}{fmtShort(prev)}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "stretch", gap: 4, paddingTop: 8, borderTop: `1px solid ${C.line}` }}>
+                {cell("Entrada", inc, C.green)}
+                <div style={{ width: 1, background: C.line }} />
+                {cell("Saída", exp, C.red)}
+                <div style={{ width: 1, background: C.line }} />
+                {cell("Saldo", saldo, saldo >= 0 ? C.green : C.red)}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      )}
+
+      {/* Budget per category (Casal) / Gastos por categoria (individual) */}
+      <Card>
+        <div style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink, marginBottom: 12 }}>
+          {isCouple ? "Real vs. Orçado" : `Gastos de ${personView} por categoria`} · {MONTHS_FULL[month]}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {(() => {
+            const maxSpent = Math.max(...catRows.map((r) => r.spent), 1);
+            return catRows.map(({ c, spent, budget, pct, over }) => {
+              const Icon = CAT_ICON[c] || Package;
+              const tone = isCouple
+                ? (over ? C.red : pct > 0.85 ? C.orange : C.green)
+                : viewColor;
+              const barPct = isCouple ? Math.min(100, pct * 100) : (spent / maxSpent) * 100;
+              return (
+                <div key={c}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: C.petrolSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon size={15} color={C.petrol} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: C.ink, flex: 1 }}>{c}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: tone }}>
+                      {fmtShort(spent)}
+                      {isCouple && <span style={{ fontWeight: 600, color: C.sub }}> | {fmtShort(budget)}</span>}
+                    </span>
+                    {isCouple && over && <AlertTriangle size={13} color={C.red} />}
+                  </div>
+                  <div style={{ height: 6, background: C.line, borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ width: `${barPct}%`, height: "100%", background: tone, borderRadius: 99, transition: "width .5s ease" }} />
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================ LANÇAMENTOS ============================ */
+function Entries({ entries, budgets, month, personView = "Casal", setEditing, setEntries, persistNow }) {
+  const readOnly = personView === "Casal";
+  const [filterKind, setFilterKind] = useState("Tudo"); // Tudo | Despesas | Entradas
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState({}); // categorias expandidas
+
+  const toggle = (cat) => setOpen((o) => ({ ...o, [cat]: !o[cat] }));
+
+  const setMonthValue = useCallback((id, value) => {
+    setEntries((prev) => {
+      const next = prev.map((e) =>
+        e.id === id ? { ...e, monthly: e.monthly.map((v, i) => (i === month ? value : v)) } : e
+      );
+      persistNow(next);
+      return next;
+    });
+  }, [month, setEntries, persistNow]);
+
+  const del = useCallback((id) => {
+    setEntries((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      persistNow(next);
+      return next;
+    });
+  }, [setEntries, persistNow]);
+
+  const groups = useMemo(() => {
+    const filtered = entries.filter((e) => {
+      if (personView !== "Casal" && e.person !== personView) return false;
+      if (filterKind === "Despesas" && e.kind !== "expense") return false;
+      if (filterKind === "Entradas" && e.kind !== "income") return false;
+      if (!readOnly && search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+    const order = filterKind === "Entradas" ? ["Renda"] : [...CATEGORIES, "Renda"];
+    return order
+      .map((cat) => ({
+        cat,
+        items: filtered.filter((e) => e.category === cat),
+      }))
+      .filter((g) => g.items.length);
+  }, [entries, personView, filterKind, search, readOnly]);
+
+  // Em buscas (abas individuais), abre automaticamente as categorias com resultado
+  const searching = !readOnly && search.trim().length > 0;
+
+  const seg = (val, set, opts) => (
+    <div style={{ display: "flex", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: 3, gap: 2 }}>
+      {opts.map((o) => (
+        <button key={o} onClick={() => set(o)} style={{
+          border: "none", background: val === o ? C.petrol : "transparent",
+          color: val === o ? "#fff" : C.sub, fontSize: 12, fontWeight: 600,
+          padding: "6px 10px", borderRadius: 8, cursor: "pointer", transition: ".15s",
+        }}>{o}</button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Aviso de modo leitura no Casal */}
+      {readOnly && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "10px 14px",
+          background: C.coupleSoft, borderRadius: 12, border: `1px solid ${C.couple}33`,
+        }}>
+          <LayoutDashboard size={15} color={C.couple} />
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: C.couple }}>
+            Visão do casal · toque numa categoria para ver os detalhes
+          </span>
+        </div>
+      )}
+
+      {/* Busca só nas abas individuais */}
+      {!readOnly && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", background: C.bg, border: `1px solid ${C.line}`, borderRadius: 12, padding: "8px 12px" }}>
+          <Search size={16} color={C.sub} />
+          <input
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar lançamento..."
+            style={{ border: "none", outline: "none", fontSize: 14, flex: 1, color: C.ink, background: "transparent", fontFamily: "Inter" }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} style={iconBtn}><X size={15} color={C.sub} /></button>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {seg(filterKind, setFilterKind, ["Tudo", "Despesas", "Entradas"])}
+      </div>
+
+      {groups.map(({ cat, items }) => {
+        const Icon = cat === "Renda" ? Wallet : (CAT_ICON[cat] || Package);
+        const isIncome = cat === "Renda";
+        const total = items.reduce((a, e) => a + (e.monthly[month] || 0), 0);
+        const isOpen = searching || open[cat];
+        const byPerson = PEOPLE.map((p) => ({
+          p, v: items.filter((e) => e.person === p).reduce((a, e) => a + (e.monthly[month] || 0), 0),
+        })).filter((x) => x.v > 0);
+        return (
+          <Card key={cat} style={{ padding: 0 }}>
+            <button onClick={() => toggle(cat)} style={{
+              width: "100%", textAlign: "left", border: "none", background: "transparent",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+              padding: "12px 14px", borderBottom: isOpen ? `1px solid ${C.line}` : "none",
+            }}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: isIncome ? C.greenSoft : C.petrolSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon size={16} color={isIncome ? C.green : C.petrol} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink }}>{cat}</span>
+                {readOnly && byPerson.length > 1 && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 3 }}>
+                    {byPerson.map(({ p, v }) => (
+                      <span key={p} style={{ fontSize: 10.5, color: personColor(p), fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 99, background: personColor(p) }} />
+                        {p.split(" ")[0]} {fmtShort(v)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ fontSize: 10.5, color: C.sub, marginTop: 2 }}>
+                  {items.length} {items.length === 1 ? "lançamento" : "lançamentos"}
+                </div>
+              </div>
+              <span style={{ fontWeight: 700, fontSize: 14, color: isIncome ? C.green : C.ink }}>{fmtShort(total)}</span>
+              <ChevronRight size={18} color={C.sub} style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+            </button>
+            {isOpen && (
+              <div>
+                {items.map((e, idx) => (
+                  <EntryRow key={e.id} e={e} month={month} last={idx === items.length - 1}
+                    readOnly={readOnly}
+                    onChange={(v) => setMonthValue(e.id, v)}
+                    onEdit={() => setEditing(e)} onDelete={() => del(e.id)} />
+                ))}
+              </div>
+            )}
+          </Card>
+        );
+      })}
+      {!groups.length && (
+        <div style={{ textAlign: "center", padding: 40, color: C.sub, fontSize: 14 }}>
+          Nenhum lançamento encontrado.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EntryRow({ e, month, last, readOnly, onChange, onEdit, onDelete }) {
+  const [val, setVal] = useState(String(e.monthly[month] ?? 0));
+  const [focus, setFocus] = useState(false);
+  useEffect(() => { if (!focus) setVal(String(e.monthly[month] ?? 0)); }, [e, month, focus]);
+
+  const commit = () => {
+    const num = parseFloat(val.replace(/\./g, "").replace(",", ".")) || 0;
+    onChange(num);
+    setFocus(false);
+  };
+  const isIncome = e.kind === "income";
+  const pc = personColor(e.person);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderBottom: last ? "none" : `1px solid ${C.line}`, position: "relative" }}>
+      <div style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: 99, background: pc }} />
+      <div style={{ flex: 1, minWidth: 0, paddingLeft: 6 }}>
+        <div style={{ fontSize: 14, color: C.ink, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name}</div>
+        <div style={{ marginTop: 3 }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            background: personSoft(e.person), color: pc, fontSize: 10, fontWeight: 700,
+            padding: "1px 7px 1px 4px", borderRadius: 999,
+          }}>
+            <span style={{
+              width: 12, height: 12, borderRadius: 999, background: pc, color: "#fff",
+              fontSize: 8, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}>{PERSON[e.person] ? PERSON[e.person].initial : "?"}</span>
+            {e.person}
+          </span>
+        </div>
+      </div>
+
+      {readOnly ? (
+        <span style={{ fontSize: 14, fontWeight: 700, color: isIncome ? C.green : C.ink, whiteSpace: "nowrap" }}>
+          {fmt(e.monthly[month] || 0)}
+        </span>
+      ) : (
+        <>
+          <div style={{
+            display: "flex", alignItems: "center",
+            border: `1px solid ${focus ? C.petrol : C.line}`, borderRadius: 9,
+            padding: "5px 9px", background: focus ? C.petrolSoft : C.panel, transition: ".15s",
+          }}>
+            <span style={{ fontSize: 12, color: C.sub, marginRight: 3 }}>R$</span>
+            <input
+              inputMode="decimal" value={val}
+              onFocus={(ev) => { setFocus(true); ev.target.select(); }}
+              onChange={(ev) => setVal(ev.target.value)}
+              onBlur={commit}
+              onKeyDown={(ev) => ev.key === "Enter" && ev.target.blur()}
+              style={{
+                border: "none", outline: "none", width: 74, textAlign: "right",
+                fontSize: 14, fontWeight: 600, color: isIncome ? C.green : C.ink,
+                background: "transparent", fontFamily: "Inter",
+              }}
+            />
+          </div>
+          <button onClick={onEdit} style={iconBtn}><Pencil size={14} color={C.sub} /></button>
+          <button onClick={onDelete} style={iconBtn}><Trash2 size={14} color={C.red} /></button>
+        </>
+      )}
+    </div>
+  );
+}
+const iconBtn = { border: "none", background: "transparent", cursor: "pointer", padding: 5, borderRadius: 7, display: "flex" };
+
+/* ============================ MODAL ADD/EDIT ============================ */
+function EntryModal({ editing, month, onClose, onSave, existingNames, defaultPerson = "Fernando" }) {
+  const isNew = editing === "new";
+  const base = isNew
+    ? { id: null, kind: "expense", category: "Moradia", person: defaultPerson, name: "", monthly: Array(12).fill(0) }
+    : editing;
+  const [kind, setKind] = useState(base.kind);
+  const [category, setCategory] = useState(base.category === "Renda" ? "Moradia" : base.category);
+  const [person, setPerson] = useState(base.person);
+  const [name, setName] = useState(base.name);
+  const [amount, setAmount] = useState(String(base.monthly[month] ?? 0));
+  const [catOpen, setCatOpen] = useState(false); // acordeão da categoria
+  const [nameMode, setNameMode] = useState("type"); // "type" (Nova) primeiro; "pick" só ao clicar
+  const [recur, setRecur] = useState(false);
+  // meses marcados para repetir (índices). Começa vazio.
+  const [months, setMonths] = useState([]);
+
+  const suggestions = useMemo(() => {
+    const cat = kind === "income" ? "Renda" : category;
+    return [...new Set(existingNames.filter((n) => n.cat === cat).map((n) => n.name))].slice(0, 20);
+  }, [existingNames, kind, category]);
+
+  const scopeColor = personColor(person);
+
+  const save = () => {
+    const num = parseFloat(amount.replace(/\./g, "").replace(",", ".")) || 0;
+    const monthly = [...base.monthly];
+    if (recur && months.length) {
+      months.forEach((m) => { monthly[m] = num; });
+      if (!months.includes(month)) monthly[month] = num; // garante o mês atual
+    } else {
+      monthly[month] = num;
+    }
+    onSave({
+      id: base.id || uid(),
+      kind,
+      category: kind === "income" ? "Renda" : category,
+      person, name: name.trim() || "Sem nome", monthly,
+    });
+  };
+
+  const toggleMonth = (m) =>
+    setMonths((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
+
+  const CatIcon = CAT_ICON[category] || Package;
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "rgba(30,42,51,.4)", backdropFilter: "blur(3px)",
+      display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: C.bg, width: "100%", maxWidth: 480, borderRadius: "22px 22px 0 0",
+        padding: 20, maxHeight: "92vh", overflowY: "auto",
+        animation: "slideUp .28s cubic-bezier(.2,.8,.2,1)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <div style={{ fontWeight: 700, fontFamily: "Sora", fontSize: 18, color: C.ink }}>
+            {isNew ? "Novo lançamento" : "Editar lançamento"}
+          </div>
+          <button onClick={onClose} style={iconBtn}><X size={20} color={C.sub} /></button>
+        </div>
+
+        {/* 1. QUEM */}
+        <Label>Quem</Label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {PEOPLE.map((p) => {
+            const a = person === p;
+            const pc = personColor(p);
+            return (
+              <button key={p} onClick={() => setPerson(p)} style={{
+                flex: 1, border: `1px solid ${a ? pc : C.line}`,
+                background: a ? pc : C.bg, color: a ? "#fff" : C.ink,
+                padding: "10px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                cursor: "pointer", transition: ".15s", display: "flex",
+                alignItems: "center", justifyContent: "center", gap: 7,
+              }}>
+                <span style={{
+                  width: 18, height: 18, borderRadius: 999,
+                  background: a ? "rgba(255,255,255,.25)" : personSoft(p),
+                  color: a ? "#fff" : pc, fontSize: 10, fontWeight: 800,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>{PERSON[p].initial}</span>
+                {p}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 2. TIPO */}
+        <Label>Tipo</Label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {[
+            { k: "expense", icon: ArrowDownRight, label: "Despesa", col: C.red },
+            { k: "income", icon: ArrowUpRight, label: "Entrada", col: C.green },
+          ].map(({ k, icon: Icon, label, col }) => {
+            const a = kind === k;
+            return (
+              <button key={k} onClick={() => setKind(k)} style={{
+                flex: 1, border: `1px solid ${a ? col : C.line}`,
+                background: a ? col : C.bg, color: a ? "#fff" : C.ink,
+                padding: "10px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                cursor: "pointer", transition: ".15s", display: "flex",
+                alignItems: "center", justifyContent: "center", gap: 7,
+              }}>
+                <Icon size={15} /> {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 3. CATEGORIA (acordeão) — só para despesa */}
+        {kind === "expense" && (
+          <>
+            <Label>Categoria</Label>
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
+              <button onClick={() => setCatOpen((o) => !o)} style={{
+                width: "100%", border: "none", background: C.panel, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 10, padding: "11px 13px",
+              }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: C.petrolSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <CatIcon size={15} color={C.petrol} />
+                </div>
+                <span style={{ flex: 1, textAlign: "left", fontSize: 14, fontWeight: 600, color: C.ink }}>{category}</span>
+                <ChevronRight size={18} color={C.sub} style={{ transform: catOpen ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+              </button>
+              {catOpen && (
+                <div style={{ borderTop: `1px solid ${C.line}`, maxHeight: 220, overflowY: "auto" }}>
+                  {CATEGORIES.map((c) => {
+                    const Icon = CAT_ICON[c] || Package;
+                    const a = category === c;
+                    return (
+                      <button key={c} onClick={() => { setCategory(c); setCatOpen(false); }} style={{
+                        width: "100%", border: "none", background: a ? C.petrolSoft : "transparent",
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "10px 13px",
+                        borderBottom: `1px solid ${C.line}`,
+                      }}>
+                        <Icon size={15} color={C.petrol} />
+                        <span style={{ flex: 1, textAlign: "left", fontSize: 13, fontWeight: a ? 700 : 500, color: C.ink }}>{c}</span>
+                        {a && <Check size={15} color={C.petrol} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* 4. DESCRIÇÃO — Nova primeiro e selecionada */}
+        <Label>Descrição</Label>
+        {suggestions.length > 0 && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button onClick={() => { setNameMode("type"); }} style={modeChip(nameMode === "type")}>Nova</button>
+            <button onClick={() => setNameMode("pick")} style={modeChip(nameMode === "pick")}>Escolher existente</button>
+          </div>
+        )}
+        {nameMode === "pick" && suggestions.length > 0 ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+            {suggestions.map((s) => {
+              const a = name === s;
+              return (
+                <button key={s} onClick={() => setName(s)} style={{
+                  border: `1px solid ${a ? C.petrol : C.line}`, background: a ? C.petrol : C.bg,
+                  color: a ? "#fff" : C.ink, padding: "8px 11px", borderRadius: 10, fontSize: 12,
+                  fontWeight: 600, cursor: "pointer",
+                }}>{s}</button>
+              );
+            })}
+          </div>
+        ) : (
+          <input
+            value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="Ex.: Mercado, Farmácia, Salário..."
+            style={inputStyle}
+          />
+        )}
+
+        {/* 5. VALOR */}
+        <Label>Valor {recur && months.length ? "(por mês)" : `· ${MONTHS_FULL[month]}`}</Label>
+        <div style={{ display: "flex", alignItems: "center", border: `1.5px solid ${scopeColor}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+          <span style={{ fontSize: 18, color: C.sub, marginRight: 6 }}>R$</span>
+          <input
+            inputMode="decimal" value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            placeholder="0,00"
+            style={{ border: "none", outline: "none", fontSize: 24, fontWeight: 700, color: C.ink, flex: 1, fontFamily: "Sora", background: "transparent" }}
+          />
+        </div>
+
+        {/* 6. REPETIR — abre checkboxes dos meses restantes */}
+        <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: recur ? 12 : 18, cursor: "pointer" }}>
+          <div onClick={() => { const n = !recur; setRecur(n); if (!n) setMonths([]); }} style={{
+            width: 44, height: 26, borderRadius: 99, background: recur ? C.green : C.line,
+            position: "relative", transition: ".2s", flexShrink: 0,
+          }}>
+            <div style={{ position: "absolute", top: 3, left: recur ? 21 : 3, width: 20, height: 20, borderRadius: 99, background: "#fff", transition: ".2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Repetir em outros meses</div>
+            <div style={{ fontSize: 11, color: C.sub }}>Marque os meses que recebem este valor</div>
+          </div>
+        </label>
+
+        {recur && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7 }}>
+              {MONTHS.map((mLabel, i) => {
+                if (i < month) return null; // só meses restantes (a partir do atual)
+                const checked = months.includes(i) || i === month;
+                const isCurrent = i === month;
+                return (
+                  <button key={i} onClick={() => !isCurrent && toggleMonth(i)} style={{
+                    border: `1px solid ${checked ? scopeColor : C.line}`,
+                    background: checked ? scopeColor : C.bg, color: checked ? "#fff" : C.sub,
+                    borderRadius: 9, padding: "9px 4px", fontSize: 12.5, fontWeight: 700,
+                    cursor: isCurrent ? "default" : "pointer", opacity: isCurrent ? 0.7 : 1,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                  }}>
+                    {checked && <Check size={12} />}{mLabel}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <button onClick={() => setMonths(Array.from({ length: 12 - month }, (_, k) => month + k))}
+                style={miniBtn}>Todos restantes</button>
+              <button onClick={() => setMonths([])} style={miniBtn}>Limpar</button>
+            </div>
+            <div style={{ fontSize: 11, color: C.sub, marginTop: 8 }}>
+              {(() => {
+                const sel = [...new Set([month, ...months])].length;
+                return `${sel} ${sel === 1 ? "mês" : "meses"} · total ${fmt((parseFloat(amount.replace(/\./g, "").replace(",", ".")) || 0) * sel)}`;
+              })()}
+            </div>
+          </div>
+        )}
+
+        <button onClick={save} style={{
+          width: "100%", border: "none", background: C.petrol, color: "#fff",
+          padding: 15, borderRadius: 13, fontSize: 15, fontWeight: 700, fontFamily: "Sora",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}>
+          <Check size={18} /> {isNew ? "Adicionar" : "Salvar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+const Label = ({ children }) => (
+  <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 7, letterSpacing: .2 }}>{children}</div>
+);
+const modeChip = (active) => ({
+  border: `1px solid ${active ? C.petrol : C.line}`,
+  background: active ? C.petrol : C.bg, color: active ? "#fff" : C.sub,
+  padding: "6px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: ".15s",
+});
+const miniBtn = {
+  flex: 1, border: `1px solid ${C.line}`, background: C.panel, color: C.sub,
+  borderRadius: 8, padding: "7px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+};
+const inputStyle = {
+  width: "100%", boxSizing: "border-box", border: `1px solid ${C.line}`, borderRadius: 11,
+  padding: "12px 14px", fontSize: 15, color: C.ink, outline: "none", marginBottom: 16, fontFamily: "Inter",
+};
+
+/* ============================ COMPRAR? (assistente de compra) ============================ */
+function BuyAdvisor({ entries, saldoInicial, month }) {
+  const [amountStr, setAmountStr] = useState("");
+  const [who, setWho] = useState("Casal"); // Casal | Fernando | Helen
+
+  const amount = parseFloat(amountStr.replace(/\./g, "").replace(",", ".")) || 0;
+  const RESERVE = 0.30; // mantém 30% da folga intacta -> usa no máx 70%
+  const USABLE = 1 - RESERVE;
+
+  // Projeção do saldo acumulado mês a mês para o escopo escolhido (sem a compra)
+  const proj = useMemo(() => {
+    const inScope = (e) => who === "Casal" || e.person === who;
+    const monthly = MONTHS.map((_, m) => {
+      let inc = 0, exp = 0;
+      entries.forEach((e) => {
+        if (!inScope(e)) return;
+        const v = e.monthly[m] || 0;
+        if (e.kind === "income") inc += v; else exp += v;
+      });
+      return { inc, exp, net: inc - exp };
+    });
+    let run = who === "Casal" ? saldoInicial : 0;
+    const balance = monthly.map((mo) => (run += mo.net));
+    return { monthly, balance };
+  }, [entries, saldoInicial, who]);
+
+  // Saldo acumulado disponível AGORA (mês selecionado) e folga média futura
+  const saldoAtual = proj.balance[month];
+  const remainingMonths = 12 - month; // inclui o mês atual
+  // folga média mensal projetada dos meses restantes (net)
+  const avgNet = proj.monthly.slice(month).reduce((a, m) => a + m.net, 0) / Math.max(1, remainingMonths);
+
+  // ---- Análise à vista ----
+  // À vista usa o saldo acumulado atual; respeita reserva de 30% do saldo.
+  const usableNow = Math.max(0, saldoAtual) * USABLE;
+  const aVistaOk = amount > 0 && amount <= usableNow;
+  const aVistaTight = amount > usableNow && amount <= Math.max(0, saldoAtual);
+
+  // ---- Análise parcelada (sem juros) ----
+  // Para N parcelas, a parcela mensal não pode comprometer mais que 70% da folga
+  // mensal projetada de cada mês em que a parcela cai, e o saldo acumulado
+  // projetado não pode ficar negativo em nenhum mês.
+  function simulateInstallments(n) {
+    const parcela = amount / n;
+    const fitsInYear = month + n <= 12;
+    let comfortable = fitsInYear;
+    // cada parcela não pode comprometer mais que 70% da folga do mês em que cai
+    for (let i = 0; i < n; i++) {
+      const m = month + i;
+      if (m > 11) { comfortable = false; break; }
+      const folgaMes = proj.monthly[m].net;
+      if (parcela > folgaMes * USABLE) comfortable = false;
+    }
+    // saldo acumulado projetado, descontando as parcelas mês a mês
+    let bal = month > 0 ? proj.balance[month - 1] : (who === "Casal" ? saldoInicial : 0);
+    let worstBalance = Infinity;
+    for (let m = month; m < 12; m++) {
+      const parcelaDoMes = (m >= month && m < month + n) ? parcela : 0;
+      bal += proj.monthly[m].net - parcelaDoMes;
+      if (bal < worstBalance) worstBalance = bal;
+    }
+    if (worstBalance < 0) comfortable = false;
+    return { n, parcela, comfortable, worstBalance, fitsInYear };
+  }
+
+  const options = [1, 2, 3, 4, 6, 10, 12].map(simulateInstallments).filter((o) => o.fitsInYear);
+  // melhor opção: menor nº de parcelas que seja confortável; se nenhuma, a que deixa melhor saldo
+  const comfy = options.filter((o) => o.comfortable);
+  const best = amount > 0
+    ? (aVistaOk ? { type: "avista" }
+       : comfy.length ? { type: "parcela", ...comfy[0] }
+       : options.length ? { type: "parcela", ...[...options].sort((a, b) => b.worstBalance - a.worstBalance)[0], forced: true }
+       : null)
+    : null;
+
+  // melhor mês para comprar à vista: primeiro mês cujo saldo acumulado * 70% >= valor
+  const bestMonth = useMemo(() => {
+    if (amount <= 0) return null;
+    for (let m = month; m < 12; m++) {
+      if (Math.max(0, proj.balance[m]) * USABLE >= amount) return m;
+    }
+    return null;
+  }, [amount, proj, month]);
+
+  const scopeColor = who === "Casal" ? C.couple : personColor(who);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ padding: 18 }}>
+        <div style={{ fontFamily: "Sora", fontWeight: 700, fontSize: 17, color: C.ink }}>
+          Vale a pena comprar?
+        </div>
+        <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4, lineHeight: 1.5 }}>
+          Informe o valor e quem vai comprar. O app analisa seu saldo projetado e
+          sugere a melhor forma de pagar — mantendo 30% de folga como reserva.
+        </div>
+
+        {/* Quem */}
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginTop: 14, marginBottom: 7 }}>Quem vai comprar</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {["Casal", "Fernando", "Helen"].map((p) => {
+            const a = who === p;
+            const col = p === "Casal" ? C.couple : personColor(p);
+            return (
+              <button key={p} onClick={() => setWho(p)} style={{
+                flex: 1, border: `1px solid ${a ? col : C.line}`,
+                background: a ? col : C.bg, color: a ? "#fff" : C.ink,
+                padding: "9px 6px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                cursor: "pointer", transition: ".15s",
+              }}>{p}</button>
+            );
+          })}
+        </div>
+
+        {/* Valor */}
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginTop: 14, marginBottom: 7 }}>Valor da compra</div>
+        <div style={{ display: "flex", alignItems: "center", border: `1.5px solid ${scopeColor}`, borderRadius: 12, padding: "12px 14px" }}>
+          <span style={{ fontSize: 18, color: C.sub, marginRight: 6 }}>R$</span>
+          <input
+            inputMode="decimal" value={amountStr}
+            onChange={(e) => setAmountStr(e.target.value)}
+            placeholder="0,00"
+            style={{ border: "none", outline: "none", fontSize: 24, fontWeight: 700, color: C.ink, flex: 1, fontFamily: "Sora", background: "transparent" }}
+          />
+        </div>
+      </Card>
+
+      {amount > 0 && (
+        <>
+          {/* Recomendação principal */}
+          <Card accent={best && best.type === "avista" ? C.green : best && !best.forced ? scopeColor : C.red}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.sub, letterSpacing: .3, marginBottom: 6 }}>RECOMENDAÇÃO</div>
+            {best && best.type === "avista" && (
+              <div>
+                <div style={{ fontSize: 18, fontFamily: "Sora", fontWeight: 700, color: C.green }}>
+                  Pode comprar à vista
+                </div>
+                <div style={{ fontSize: 13, color: C.sub, marginTop: 4, lineHeight: 1.5 }}>
+                  Você tem folga de sobra em {MONTHS_FULL[month]}. Mesmo pagando tudo agora,
+                  ainda fica dentro da sua margem de segurança.
+                </div>
+              </div>
+            )}
+            {best && best.type === "parcela" && !best.forced && (
+              <div>
+                <div style={{ fontSize: 18, fontFamily: "Sora", fontWeight: 700, color: scopeColor }}>
+                  Parcele em {best.n}x de {fmt(best.parcela)}
+                </div>
+                <div style={{ fontSize: 13, color: C.sub, marginTop: 4, lineHeight: 1.5 }}>
+                  À vista comprometeria demais seu mês. Em {best.n}x sem juros, cada parcela
+                  cabe na folga mensal sem te apertar.
+                </div>
+              </div>
+            )}
+            {best && best.forced && (
+              <div>
+                <div style={{ fontSize: 18, fontFamily: "Sora", fontWeight: 700, color: C.red }}>
+                  Atenção: aperta o orçamento
+                </div>
+                <div style={{ fontSize: 13, color: C.sub, marginTop: 4, lineHeight: 1.5 }}>
+                  Mesmo na melhor divisão ({best.n}x de {fmt(best.parcela)}), seu saldo
+                  projetado fica baixo{best.worstBalance < 0 ? " (chega a ficar negativo)" : ""}.
+                  {bestMonth != null && bestMonth > month
+                    ? ` Considere esperar até ${MONTHS_FULL[bestMonth]}.`
+                    : " Vale reavaliar a compra."}
+                </div>
+              </div>
+            )}
+            {!best && (
+              <div style={{ fontSize: 14, color: C.sub }}>Informe um valor para analisar.</div>
+            )}
+          </Card>
+
+          {/* Contexto: quanto dá pra gastar */}
+          <Card>
+            <div style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink, marginBottom: 10 }}>
+              Sua situação em {MONTHS_FULL[month]}
+            </div>
+            <Row label="Saldo acumulado" value={fmt(saldoAtual)} color={saldoAtual >= 0 ? C.green : C.red} />
+            <Row label="Pode usar sem comprometer (70%)" value={fmt(usableNow)} color={C.ink} />
+            <Row label="Folga média dos próximos meses" value={fmt(avgNet)} color={avgNet >= 0 ? C.green : C.red} />
+            <Row label="Valor da compra" value={fmt(amount)} color={scopeColor} last />
+          </Card>
+
+          {/* Tabela de parcelamento */}
+          <Card>
+            <div style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink, marginBottom: 4 }}>
+              Formas de pagar
+            </div>
+            <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 10 }}>
+              Verde = confortável · Vermelho = aperta o saldo projetado
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {[{ n: 1, parcela: amount, comfortable: aVistaOk, worstBalance: saldoAtual - amount, label: "À vista" },
+                ...options.filter((o) => o.n > 1)].map((o) => {
+                const ok = o.comfortable;
+                return (
+                  <div key={o.n} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                    borderRadius: 10, background: ok ? C.greenSoft : C.redSoft,
+                  }}>
+                    <span style={{
+                      width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                      background: ok ? C.green : C.red, color: "#fff", fontSize: 11, fontWeight: 800,
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    }}>{o.n === 1 ? "1x" : o.n + "x"}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+                        {o.n === 1 ? "À vista" : `${o.n}x de ${fmt(o.parcela)}`}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.sub }}>
+                        {ok ? "Cabe no orçamento" : (o.worstBalance < 0 ? "Saldo fica negativo" : "Aperta a folga")}
+                      </div>
+                    </div>
+                    {ok
+                      ? <Check size={16} color={C.green} />
+                      : <AlertTriangle size={15} color={C.red} />}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Melhor data */}
+          {bestMonth != null && (
+            <Card accent={C.couple}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <Calendar size={18} color={C.couple} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.ink, marginBottom: 3 }}>Melhor momento para comprar à vista</div>
+                  <div style={{ fontSize: 12.5, color: C.sub, lineHeight: 1.5 }}>
+                    {bestMonth === month
+                      ? `Agora mesmo (${MONTHS_FULL[month]}) você já tem saldo confortável para pagar à vista.`
+                      : `A partir de ${MONTHS_FULL[bestMonth]} seu saldo projetado comporta essa compra à vista sem comprometer a reserva.`}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <div style={{ fontSize: 11, color: C.sub, textAlign: "center", lineHeight: 1.5, padding: "0 8px" }}>
+            Estimativas baseadas nos seus lançamentos previstos e em parcelas sem juros.
+            Não considera juros de cartão, limite ou reserva de emergência.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value, color, last }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: last ? "none" : `1px solid ${C.line}` }}>
+      <span style={{ fontSize: 13, color: C.sub }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 700, color }}>{value}</span>
+    </div>
+  );
+}
+
+/* ============================ AJUSTES ============================ */
+function SettingsView({ budgets, setBudgets, saldoInicial, setSaldoInicial, comp, onReset }) {
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card>
+        <div style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink, marginBottom: 4 }}>
+          Saldo inicial do ano
+        </div>
+        <div style={{ fontSize: 12, color: C.sub, marginBottom: 10 }}>
+          Ponto de partida para o saldo acumulado.
+        </div>
+        <div style={{ display: "flex", alignItems: "center", border: `1px solid ${C.line}`, borderRadius: 11, padding: "10px 13px" }}>
+          <span style={{ fontSize: 16, color: C.sub, marginRight: 6 }}>R$</span>
+          <input
+            inputMode="decimal" defaultValue={saldoInicial}
+            onBlur={(e) => setSaldoInicial(parseFloat(e.target.value.replace(/\./g, "").replace(",", ".")) || 0)}
+            style={{ border: "none", outline: "none", fontSize: 18, fontWeight: 700, fontFamily: "Sora", color: C.ink, flex: 1, background: "transparent" }}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 600, fontFamily: "Sora", fontSize: 14, color: C.ink, marginBottom: 4 }}>
+          Orçamento mensal por categoria
+        </div>
+        <div style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>
+          Define a meta mensal usada nas barras de Orçado vs. Real.
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          {CATEGORIES.map((c) => {
+            const Icon = CAT_ICON[c] || Package;
+            return (
+              <div key={c} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: C.petrolSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon size={14} color={C.petrol} />
+                </div>
+                <span style={{ fontSize: 13, color: C.ink, flex: 1 }}>{c}</span>
+                <div style={{ display: "flex", alignItems: "center", border: `1px solid ${C.line}`, borderRadius: 9, padding: "5px 9px", background: C.panel }}>
+                  <span style={{ fontSize: 12, color: C.sub, marginRight: 3 }}>R$</span>
+                  <input
+                    inputMode="decimal" defaultValue={budgets[c] || 0}
+                    onBlur={(e) => {
+                      const v = parseFloat(e.target.value.replace(/\./g, "").replace(",", ".")) || 0;
+                      setBudgets((p) => ({ ...p, [c]: v }));
+                    }}
+                    style={{ border: "none", outline: "none", width: 72, textAlign: "right", fontSize: 14, fontWeight: 600, color: C.ink, background: "transparent" }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, marginTop: 4, borderTop: `1px solid ${C.line}` }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Total / ano</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.petrol }}>{fmt(comp.budgetYear)}</span>
+          </div>
+        </div>
+      </Card>
+
+      <Card accent={C.petrol}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <Cloud size={20} color={C.petrol} style={{ flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13, color: C.ink, marginBottom: 4 }}>Sobre a sincronização</div>
+            <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.5 }}>
+              Os dados ficam guardados num armazenamento compartilhado: abrindo o app no mesmo ambiente, os dois celulares veem os mesmos lançamentos. Para sincronização dedicada em nuvem (Firebase/Supabase) entre aparelhos distintos, o código já está preparado para receber as credenciais.
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13, color: C.ink }}>Restaurar dados de 2026</div>
+            <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Volta aos valores da planilha original.</div>
+          </div>
+          {!confirmReset ? (
+            <button onClick={() => setConfirmReset(true)} style={{ border: `1px solid ${C.line}`, background: C.bg, borderRadius: 9, padding: "8px 12px", fontSize: 13, fontWeight: 600, color: C.sub, cursor: "pointer" }}>
+              Restaurar
+            </button>
+          ) : (
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { onReset(); setConfirmReset(false); }} style={{ border: "none", background: C.red, color: "#fff", borderRadius: 9, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Confirmar</button>
+              <button onClick={() => setConfirmReset(false)} style={{ border: `1px solid ${C.line}`, background: C.bg, borderRadius: 9, padding: "8px 10px", fontSize: 13, color: C.sub, cursor: "pointer" }}>Cancelar</button>
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================ APP SHELL ============================ */
+function App() {
+  const [state, setState] = useState(null); // {entries, budgets, saldoInicial}
+  const [entries, setEntries] = useState([]);
+  const [budgets, setBudgets] = useState({});
+  const [saldoInicial, setSaldoInicial] = useState(0);
+  const [month, setMonth] = useState(() => new Date().getMonth());
+  const [tab, setTab] = useState("dash"); // dash | entries | settings
+  const [personView, setPersonView] = useState("Casal"); // Casal | Fernando | Helen
+  const [editing, setEditing] = useState(null); // null | "new" | entry
+  const [sync, setSync] = useState("loading"); // loading | ok | local | saving
+  const [loaded, setLoaded] = useState(false);
+
+  // initial load
+  useEffect(() => {
+    (async () => {
+      const stored = await loadState();
+      if (stored && stored.entries) {
+        setEntries(stored.entries);
+        setBudgets(stored.budgets);
+        setSaldoInicial(stored.saldoInicial || 0);
+        setSync(hasSupabase ? "ok" : "local");
+      } else {
+        const seeded = seedToState(SEED);
+        setEntries(seeded.entries);
+        setBudgets(seeded.budgets);
+        setSaldoInicial(seeded.saldoInicial);
+        if (hasSupabase) { await saveState(seeded); setSync("ok"); }
+        else setSync("local");
+      }
+      setLoaded(true);
+    })();
+  }, []);
+
+  // Realtime: quando o outro celular salva, atualiza este aqui.
+  useEffect(() => {
+    if (!hasSupabase) return;
+    const unsub = subscribeRemote((payload) => {
+      if (!payload || !payload.entries) return;
+      setEntries(payload.entries);
+      setBudgets(payload.budgets);
+      setSaldoInicial(payload.saldoInicial || 0);
+      setSync("ok");
+    });
+    return unsub;
+  }, []);
+
+  const persistNow = useCallback(async (overrideEntries) => {
+    if (!hasSupabase) return;
+    setSync("saving");
+    const ok = await saveState({
+      entries: overrideEntries || entries, budgets, saldoInicial,
+    });
+    setSync(ok ? "ok" : "local");
+  }, [entries, budgets, saldoInicial]);
+
+  // persist when budgets/saldo change (after load)
+  useEffect(() => {
+    if (!loaded) return;
+    persistNow();
+    // eslint-disable-next-line
+  }, [budgets, saldoInicial]);
+
+  const comp = useComputed(entries, budgets, saldoInicial, personView);
+
+  const existingNames = useMemo(
+    () => entries.map((e) => ({ cat: e.category, name: e.name })), [entries]
+  );
+
+  const saveEntry = (entry) => {
+    setEntries((prev) => {
+      const exists = prev.some((e) => e.id === entry.id);
+      const next = exists ? prev.map((e) => (e.id === entry.id ? entry : e)) : [...prev, entry];
+      persistNow(next);
+      return next;
+    });
+    setEditing(null);
+  };
+
+  if (!hasSupabase) {
+    return (
+      <div style={{ ...root, padding: 24, display: "flex", flexDirection: "column", gap: 14, justifyContent: "center", minHeight: "100vh" }}>
+        <style>{FONT_IMPORT}</style>
+        <div style={{ fontFamily: "Sora", fontWeight: 700, fontSize: 20, color: C.petrol }}>
+          Quase lá
+        </div>
+        <div style={{ fontSize: 14, color: C.sub, lineHeight: 1.6 }}>
+          O app está pronto, mas ainda falta conectar o banco de dados na nuvem
+          (Supabase) para sincronizar os dois celulares. Abra o arquivo
+          <b> index.html</b>, preencha <b> SUPABASE_URL </b> e
+          <b> SUPABASE_ANON_KEY </b> no bloco <b> CONFIG </b> lá no início, e
+          recarregue.
+        </div>
+        <div style={{ fontSize: 13, color: C.sub }}>
+          O passo a passo completo está no arquivo <b>LEIA-ME.md</b> do projeto.
+        </div>
+      </div>
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <div style={{ ...root, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400 }}>
+        <style>{`${FONT_IMPORT} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <RefreshCw size={28} color={C.petrol} style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+    );
+  }
+
+  const syncBadge = {
+    loading: { icon: <RefreshCw size={13} />, text: "Carregando", tone: "neutral" },
+    saving: { icon: <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />, text: "Salvando", tone: "warn" },
+    ok: { icon: <Cloud size={13} />, text: "Sincronizado", tone: "good" },
+    local: { icon: <CloudOff size={13} />, text: "Local", tone: "warn" },
+  }[sync];
+
+  return (
+    <div style={root}>
+      <style>{`
+        ${FONT_IMPORT}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        *{font-family:'Inter',-apple-system,sans-serif;box-sizing:border-box}
+        ::-webkit-scrollbar{width:0;height:0}
+      `}</style>
+
+      {/* Header */}
+      <div style={{ padding: "16px 16px 12px", background: C.bg, borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, zIndex: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontFamily: "Sora", fontWeight: 700, fontSize: 19, color: C.petrol, lineHeight: 1 }}>
+              Nosso Orçamento
+            </div>
+            <div style={{ fontSize: 11, color: C.sub, marginTop: 3 }}>Fernando & Helen · 2026</div>
+          </div>
+          <Pill tone={syncBadge.tone}>{syncBadge.icon} {syncBadge.text}</Pill>
+        </div>
+
+        {/* Month selector */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={() => setMonth((m) => Math.max(0, m - 1))} disabled={month === 0} style={navArrow(month === 0)}>
+            <ChevronLeft size={18} color={month === 0 ? C.line : C.petrol} />
+          </button>
+          <div style={{ flex: 1, overflowX: "auto", display: "flex", gap: 6, padding: "2px 0" }}>
+            {MONTHS.map((m, i) => (
+              <button key={m} onClick={() => setMonth(i)} style={{
+                border: "none", borderRadius: 9, padding: "7px 13px", flexShrink: 0,
+                background: i === month ? C.petrol : C.panel, color: i === month ? "#fff" : C.sub,
+                fontSize: 13, fontWeight: 600, cursor: "pointer", transition: ".15s",
+              }}>{m}</button>
+            ))}
+          </div>
+          <button onClick={() => setMonth((m) => Math.min(11, m + 1))} disabled={month === 11} style={navArrow(month === 11)}>
+            <ChevronRight size={18} color={month === 11 ? C.line : C.petrol} />
+          </button>
+        </div>
+
+        {/* Person view selector — filtra o app inteiro */}
+        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+          {["Casal", "Fernando", "Helen"].map((p) => {
+            const active = personView === p;
+            const col = p === "Casal" ? C.couple : personColor(p);
+            return (
+              <button key={p} onClick={() => setPersonView(p)} style={{
+                flex: 1, border: `1px solid ${active ? col : C.line}`,
+                background: active ? col : C.bg, color: active ? "#fff" : C.sub,
+                borderRadius: 10, padding: "8px 6px", fontSize: 13, fontWeight: 700,
+                cursor: "pointer", transition: ".15s", display: "flex",
+                alignItems: "center", justifyContent: "center", gap: 6,
+              }}>
+                {p !== "Casal" && (
+                  <span style={{
+                    width: 16, height: 16, borderRadius: 999,
+                    background: active ? "rgba(255,255,255,.25)" : personSoft(p),
+                    color: active ? "#fff" : col, fontSize: 9, fontWeight: 800,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  }}>{PERSON[p].initial}</span>
+                )}
+                {p}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: 16, paddingBottom: 96 }}>
+        {tab === "dash" && <Dashboard comp={comp} month={month} budgets={budgets} personView={personView} />}
+        {tab === "entries" && (
+          <Entries entries={entries} budgets={budgets} month={month} personView={personView}
+            setEditing={setEditing} setEntries={setEntries} persistNow={persistNow} />
+        )}
+        {tab === "buy" && (
+          <BuyAdvisor entries={entries} saldoInicial={saldoInicial} month={month} />
+        )}
+        {tab === "settings" && (
+          <SettingsView budgets={budgets} setBudgets={setBudgets}
+            saldoInicial={saldoInicial} setSaldoInicial={setSaldoInicial}
+            comp={comp} onReset={async () => {
+              const s = seedToState(SEED);
+              setEntries(s.entries); setBudgets(s.budgets); setSaldoInicial(s.saldoInicial);
+              await saveState(s); setSync(hasSupabase ? "ok" : "local");
+            }} />
+        )}
+      </div>
+
+      {/* FAB — escondido nos Ajustes, no Comprar?, e na aba Lançamentos do Casal */}
+      {tab !== "settings" && tab !== "buy" && !(tab === "entries" && personView === "Casal") && (
+        <button onClick={() => setEditing("new")} style={{
+          position: "fixed", bottom: 80, right: 18, width: 58, height: 58, borderRadius: 18,
+          background: C.orange, border: "none", color: "#fff", cursor: "pointer",
+          boxShadow: "0 6px 18px rgba(232,115,42,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30,
+        }}>
+          <Plus size={28} strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Bottom nav */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 480, margin: "0 auto",
+        background: C.bg, borderTop: `1px solid ${C.line}`, display: "flex",
+        padding: "8px 0 calc(8px + env(safe-area-inset-bottom))", zIndex: 25,
+      }}>
+        {[
+          { id: "dash", icon: LayoutDashboard, label: "Painel" },
+          { id: "entries", icon: ListPlus, label: "Lançamentos" },
+          { id: "buy", icon: CircleDollarSign, label: "Comprar?" },
+          { id: "settings", icon: Settings2, label: "Ajustes" },
+        ].map(({ id, icon: Icon, label }) => (
+          <button key={id} onClick={() => setTab(id)} style={{
+            flex: 1, border: "none", background: "transparent", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            color: tab === id ? C.petrol : C.sub,
+          }}>
+            <Icon size={22} strokeWidth={tab === id ? 2.4 : 2} />
+            <span style={{ fontSize: 10.5, fontWeight: 600 }}>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {editing && (
+        <EntryModal editing={editing} month={month} existingNames={existingNames}
+          defaultPerson={personView === "Casal" ? "Fernando" : personView}
+          onClose={() => setEditing(null)} onSave={saveEntry} />
+      )}
+    </div>
+  );
+}
+
+const root = {
+  maxWidth: 480, margin: "0 auto", background: C.bg, minHeight: "100vh",
+  color: C.ink, position: "relative",
+};
+const navArrow = (dis) => ({
+  border: `1px solid ${C.line}`, background: C.bg, borderRadius: 9, width: 32, height: 32,
+  display: "flex", alignItems: "center", justifyContent: "center", cursor: dis ? "default" : "pointer", flexShrink: 0,
+});
+
+
+try {
+  const _root = ReactDOM.createRoot(document.getElementById("root"));
+  _root.render(React.createElement(App));
+} catch (err) {
+  document.getElementById("root").innerHTML =
+    '<div style="padding:24px;font-family:sans-serif;color:#142426">' +
+    '<h3 style="color:#475569">Algo deu errado ao iniciar</h3>' +
+    '<p style="color:#5E7173">Detalhe técnico: ' + (err && err.message ? err.message : err) + '</p>' +
+    '</div>';
+  console.error(err);
+}
+
+  </script>
+</body>
+</html>

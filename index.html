@@ -719,9 +719,9 @@ function Dashboard({ comp, month, budgets, personView = "Casal" }) {
 function Entries({ entries, budgets, month, personView = "Fernando", setEditing, setEntries, persistNow }) {
   const [filterKind, setFilterKind] = useState("Tudo"); // Tudo | Despesas | Entradas
   const [search, setSearch] = useState("");
-  const [open, setOpen] = useState({}); // categorias expandidas
+  const [openCat, setOpenCat] = useState(null); // categoria expandida (só uma por vez)
 
-  const toggle = (cat) => setOpen((o) => ({ ...o, [cat]: !o[cat] }));
+  const toggle = (cat) => setOpenCat((cur) => (cur === cat ? null : cat));
 
   const accent = personColor(personView);   // cor do perfil que está editando
   const accentSoft = personSoft(personView);
@@ -813,7 +813,7 @@ function Entries({ entries, budgets, month, personView = "Fernando", setEditing,
         const Icon = cat === "Renda" ? Wallet : (CAT_ICON[cat] || Package);
         const isIncome = cat === "Renda";
         const total = items.reduce((a, e) => a + (e.monthly[month] || 0), 0);
-        const isOpen = searching || open[cat];
+        const isOpen = searching || openCat === cat;
         // contagem de pagamento/recebimento (itens com valor no mês)
         const payable = items.filter((e) => (e.monthly[month] || 0) > 0);
         const paidCount = payable.filter((e) => e.paid && e.paid[month]).length;
